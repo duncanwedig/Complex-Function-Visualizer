@@ -19,9 +19,27 @@ class Vector(object):
             self.y = coords[1]
             self.r = extramath.dist([0,0], [self.x, self.y])
             self.theta = math.atan2(self.y, self.x)
-    
-    def __mul__(self, scalar):
-        return vector.Vector((self.x * scalar, self.y * scalar), vectortype.XY)
-    
-    def __add__(self, othervector):
-        return vector.Vector((self.x + othervector.x, self.y + othervector.y), vectortype.XY)
+
+    def xy(self):
+        return (self.x, self.y)
+
+    def rtheta(self):
+        return (self.r, self.theta)
+
+    def __repr__(self):
+        return str(self.x) + ', ' + str(self.y)
+
+    def __str__(self):
+        return str(self.x) + ', ' + str(self.y)
+
+    def __mul__(self, other):
+        return vector.Vector((self.x * other, self.y * other), vectortype.XY)
+
+    def __truediv__(self, other):
+        return vector.Vector((self.x / other, self.y / other), vectortype.XY)
+
+    def __add__(self, other):
+        return vector.Vector((self.x + other.x, self.y + other.y), vectortype.XY)
+
+    def __sub__(self, other):
+        return vector.Vector((self.x - other.x, self.y - other.y), vectortype.XY)
