@@ -10,7 +10,7 @@ class Planet(object):
     
     def __init__(self, location, radius, gravity_radius):
         self.position = location
-        self.rect = pygame.Rect(location.xy(), (radius*2, radius*2))
+        self.rect = pygame.Rect(location.xy, (radius*2, radius*2))
         self.size = radius
         self.gravity_size = gravity_radius
         self.surface = pygame.image.load("planet.png").convert_alpha()
@@ -29,7 +29,7 @@ class Planet(object):
 
     def move(self, duration):
         self.position += self.velocity * duration / 1000
-        self.rect.move_ip(self.position.x-self.rect.x, self.position.y - self.rect.y)
+        self.rect.move_ip(self.position.x - self.rect.x, self.position.y - self.rect.y)
     
     def get_blit_data(self):
         return ((self.surface, self.rect))

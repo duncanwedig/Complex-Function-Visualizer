@@ -19,6 +19,8 @@ class Vector(object):
             self.y = coords[1]
             self.r = extramath.dist([0,0], [self.x, self.y])
             self.theta = math.atan2(self.y, self.x)
+        self.xy = [self.x, self.y]
+        self.rtheta = [self.r, self.theta]
 
     def xy(self):
         return (self.x, self.y)
