@@ -29,10 +29,10 @@ class Vector(object):
         return (self.r, self.theta)
 
     def __repr__(self):
-        return str(self.x) + ', ' + str(self.y)
+        return 'Vector:(' + str(self.x) + ', ' + str(self.y) + ')'
 
     def __str__(self):
-        return str(self.x) + ', ' + str(self.y)
+        return 'Vector:(' + str(self.x) + ', ' + str(self.y) + ')'
 
     def __mul__(self, other):
         return vector.Vector((self.x * other, self.y * other), vectortype.XY)
