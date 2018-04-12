@@ -17,19 +17,18 @@ h = 80
 #    pygame.display.flip()
 #    h += -1
 
-vis = visualize.PolynomialGrid()
+vis = visualize.ExponentialGrid()
 screen.fill([255, 255, 255])
 vis.connect_original_points(screen)
 pygame.display.flip()
 
-for n in range(2):
+for n in range(1):
     screen.fill([255, 255, 255])
     vis.connect_original_points(screen)
-    vis.polydraw(screen, color=(255,0,0))
+    vis.expdraw(screen, color=(255,0,0))
 
     pygame.display.flip()
 
-print(np.array([[complex(x-500, y-500) for x in range(0, 1000 + 10, 10)] for y in range(0, 1000 + 10, 10)]))
 
 while 1:
     pass
