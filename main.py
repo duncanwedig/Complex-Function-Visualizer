@@ -22,18 +22,27 @@ class Grid(object):
 
     def __init__(self, window=((-10, 10), (-10, 10)), interval=1):
         x,y = pygame.display.get_surface().get_size()
-        self.scale = (x/window[0][1], y/window[0][1])
+        self.screen_center = [x/2, y/2]
+        self.scale = (x/(window[0][1]-window[0][0]), y/(window[0][1]-window[0][0]))
         self.lower = window[1][0]
         self.left = window[0][0]
         self.upper = window[1][1]
         self.right = window[0][1]
-        self.x_axis = avg(self.lower, self.upper) * self.scale[1]
-        self.y_axis = avg(self.left, self.right) * self.scale[0]
+        self.scaled_lower = 0
+        self.scaled_left = 0
+        self.scaled_upper = y
+        self.scaled_right = x
+        self.x_axis = avg(self.lower, self.upper)
+        self.y_axis = avg(self.left, self.right)
+        self.scaled_xax = self.x_axis * self.scale[1] + self.screen_center[1]
+        self.scaled_yax = self.y_axis * self.scale[0] + self.screen_center[0]
+        print(self.scaled_right)
+        print(self.scaled_left)
 
         self.interval = interval
 
-        self.x_locations = np.array([x for x in np.arange(self.left, self.right + self.interval, self.interval)])
-        self.y_locations = np.array([y for y in np.arange(self.lower, self.upper + self.interval, self.interval)])
+        self.x_locations = np.array([x for x in np.arange(self.y_axis, self.right + self.interval, self.interval)])
+        self.y_locations = np.array([y for y in np.arange(self.x_axis, self.upper + self.interval, self.interval)])
 
         self.original_lattice = np.array([[[x, y] for x in np.arange(self.left, self.right + self.interval, self.interval)]
                                 for y in np.arange(self.lower, self.upper + self.interval, self.interval)])
@@ -45,90 +54,118 @@ class Grid(object):
         # pygame.draw.line(screen, color, (self.right, self.lower), (self.right, self.upper), line_width)
         # pygame.draw.line(screen, color, (self.left, self.upper), (self.right, self.upper), line_width)
         # pygame.draw.line(screen, color, (self.left, self.lower), (self.right, self.lower), line_width)
-        for x in self.x_locations:
-            pygame.draw.line(screen, color, (x, self.lower), (x, self.upper), line_width)
-        for y in self.y_locations:
-            pygame.draw.line(screen, color, (y, self.lower), (y, self.upper), line_width)
+        for x in self.scale_points(self.x_locations, False):
+            pygame.draw.line(screen, color, (x, self.scaled_lower), (x, self.scaled_upper), line_width)
+        for x in self.scale_points(self.x_locations, True):
+            pygame.draw.line(screen, color, (x, self.scaled_lower), (x, self.scaled_upper), line_width)
+        for y in self.scale_points(self.y_locations, False):
+            pygame.draw.line(screen, color, (self.scaled_left, y), (self.scaled_right, y), line_width)
+        for y in self.scale_points(self.y_locations, True):
+            pygame.draw.line(screen, color, (self.scaled_left, y), (self.scaled_right, y), line_width)
 
         self.draw_axes(screen, color=color)
 
+    def scale_point(self, number, isNegative=False):
+        if isNegative:
+            return -number * self.scale[0] + self.screen_center[0]
+        else:
+            return number * self.scale[0] + self.screen_center[0]
+
+    def scale_points(self, numbers, isnegative=False):
+        if isnegative:
+            return np.array([-x * self.scale[0] + self.screen_center[0] for x in numbers])
+        else:
+            return np.array([x * self.scale[0] + self.screen_center[0] for x in numbers])
+
     def draw_axes(self, screen, line_width=4, color=(0, 0, 0)):
-        pygame.draw.line(screen, (0, 0, 255), (self.y_axis, self.lower * self.scale[1]), (self.y_axis, self.upper * self.scale[1]), line_width)
-        pygame.draw.line(screen, (0, 0, 255), (self.left * self.scale[0], self.x_axis), (self.right * self.scale[0], self.x_axis), line_width)
+        pygame.draw.line(screen, (0, 0, 255), (self.scaled_yax, self.scaled_lower), (self.scaled_yax, self.scaled_upper), line_width)
+        pygame.draw.line(screen, (0, 0, 255), (self.scaled_left * self.scale[0], self.scaled_xax), (self.scaled_right, self.scaled_xax), line_width)
 
 
 class ComplexGrid(Grid):
 
-    def __init__(self, window=((0, 20), (0, 20)), interval=1, step=.01):
+    def __init__(self, window=((-10, 10), (-10, 10)), interval=1, step=.01):
         self.step = step
         super().__init__(window, interval)
         # self.complex_points = np.array([[complex(item[0], item[1]) for item in self.original_lattice[column]]
         #                                   for column in np.arange(len(self.original_lattice))])
-        self.complex_points = np.array([[complex(x - self.unscaled_y_ax, y - self.unscaled_x_ax) for x in np.arange(self.left, self.right + self.interval, self.interval)]
-                                          for y in np.arange(self.lower, self.upper + self.interval, self.interval)])
+
+        self.complex_xpoints = self.x_locations
+        self.complex_ypoints = self.y_locations
+        print(self.complex_ypoints)
 
         self.func = np.vectorize(self.specialfunc)
-        self.complex_points = self.func(self.complex_points)
+        self.make_real = np.vectorize(self.decomplexify)
 
-    def specialfunc(self, number=complex(1,0)):
+    def complexify(self, points):
+        complex_points = []
+        for point in points:
+            complex_points.append(complex(point[0], point[1]))
+        return np.array(complex_points)
+
+    def decomplexify(self, number):
+        return (number.real, number.imag)
+
+    def specialfunc(self, number):
         return number**2
 
     def complexdraw(self, screen, color=(0,0,0), line_width=4):
-        for a, y in enumerate(self.complex_points):
-            for b, x in enumerate(self.complex_points):
-                x_point = self.complex_points[a][b].real * self.scale[0] + 500
-                y_point = self.complex_points[a][b].imag * self.scale[1] + 500
-                xy_point = (x_point, y_point)
+        for y in self.complex_ypoints:
+            x_of_line = np.arange(self.left, self.right + self.step, self.step)
+            yline = np.array([(x,y) for x in x_of_line])
+            yline = self.complexify(yline)
+            print(yline)
+            yline = self.func(yline)
 
-                orig_x_point = self.original_lattice[a][b][0] - self.unscaled_x_ax
-                orig_y_point = self.original_lattice[a][b][1] - self.unscaled_y_ax
-                orig_xy_point = (orig_x_point, orig_y_point)
+            for number, point in enumerate(yline):
+                if 500.0 not in self.scale_points((point.real, point.imag), False):
+                    pygame.draw.line(screen, color, self.scale_points((point.real, point.imag), False),
+                                 self.scale_points((yline[number-1].real, yline[number-1].imag), False), line_width)
 
-                if b < len(self.complex_points[a])-1:
-                    x_right = self.complex_points[a][b+1].real * self.scale[0] + 500
-                    y_right = self.complex_points[a][b+1].imag * self.scale[1] + 500
-                    xy_right = (x_right, y_right)
+            for number, point in enumerate(yline):
+                if 500.0 not in self.scale_points((point.real, point.imag), True):
+                    pygame.draw.line(screen, color, self.scale_points((point.real, point.imag), True),
+                                 self.scale_points((yline[number-1].real, yline[number-1].imag), True), line_width)
 
-                    orig_x_right = self.original_lattice[a][b + 1][0] - self.unscaled_x_ax
-                    orig_y_right = self.original_lattice[a][b + 1][1] - self.unscaled_y_ax
-                    orig_xy_right = (orig_x_right, orig_y_right)
+        for x in self.complex_xpoints:
+            y_of_line = np.arange(self.lower, self.upper + self.step, self.step)
+            xline = np.array([(x,y) for y in y_of_line])
+            xline = self.complexify(xline)
+            xline = self.func(xline)
 
-                    for t in np.arange(1, int(1/self.step + 1)):
-                        current_complex_point = self.func(
-                            complex(*lerp(orig_xy_right, orig_xy_point, t * self.step)))
-                        past_complex_point = self.func(
-                            complex(*lerp(orig_xy_right, orig_xy_point, (t - 1) * self.step)))
+            for number, point in enumerate(xline):
+                if 500.0 not in self.scale_points((point.real, point.imag), False):
+                    pygame.draw.line(screen, color, self.scale_points((point.real, point.imag), False),
+                                 self.scale_points((xline[number-1].real, xline[number-1].imag), False), line_width)
 
-                        pygame.draw.line(screen, color,
-                                         (current_complex_point.real * self.scale[0] + 500,
-                                          current_complex_point.imag * self.scale[1] + 500),
-                                         (past_complex_point.real * self.scale[0] + 500,
-                                          past_complex_point.imag * self.scale[1] + 500), line_width)
-                    # pygame.draw.line(screen, color, xy_point, xy_right, line_width)
-                if a < len(self.complex_points)-1:
-                    x_lower = self.complex_points[a + 1][b].real * self.scale[0] + 500
-                    y_lower = self.complex_points[a + 1][b].imag * self.scale[1] + 500
-                    xy_lower = (x_lower, y_lower)
+            for number, point in enumerate(xline):
+                if 500.0 not in self.scale_points((point.real, point.imag), True):
+                    pygame.draw.line(screen, color, self.scale_points((point.real, point.imag), True),
+                                 self.scale_points((xline[number-1].real, xline[number-1].imag), True), line_width)
 
-                    orig_x_lower = self.original_lattice[a + 1][b][0] - self.unscaled_x_ax
-                    orig_y_lower = self.original_lattice[a + 1][b][1] - self.unscaled_y_ax
-                    orig_xy_lower = (orig_x_lower, orig_y_lower)
 
-                    for t in np.arange(1, int(1/self.step + 1)):
-                        current_complex_point = self.func(
-                            complex(*lerp(orig_xy_lower, orig_xy_point, t * self.step)))
-                        past_complex_point = self.func(
-                            complex(*lerp(orig_xy_lower, orig_xy_point, (t - 1) * self.step)))
-                        pygame.draw.line(screen, color,
-                                         (current_complex_point.real * self.scale[0] + 500,
-                                          current_complex_point.imag * self.scale[1] + 500),
-                                         (past_complex_point.real * self.scale[0] + 500,
-                                          past_complex_point.imag * self.scale[1] + 500), line_width)
+        yline = np.arange(self.left, self.right + self.step, self.step)
+
+
+
+        # for x in self.complex_xpoints:
+        #     for t in np.arange(1/self.step + self.step):
+        #         current_point = complex(*lerp((x, self.scaled_lower), (x, self.scaled_upper), self.step * t))
+        #         pygame.draw.line(screen, color, lerp((x, self.scaled_lower), (x, self.scaled_upper), self.step * t),
+        #                          lerp((x, self.scaled_lower), (x, self.scaled_upper), self.step * t - self.step),
+        #                          line_width)
+        #
+        # for y in self.complex_ypoints:
+        #     for t in np.arange(1/self.step + self.step):
+        #         pygame.draw.line(screen, color, lerp((self.scaled_left, y), (self.scaled_right, y), self.step * t),
+        #                          lerp((self.scaled_left, y), (self.scaled_right, y), self.step * t - self.step),
+        #                          line_width)
+
 
 
 class PolynomialGrid(ComplexGrid):
 
-    def __init__(self, window=((0, 20), (0, 20)), interval=1, step=.01, coefficients=(0,0,1)):
+    def __init__(self, window=((-10, 10), (-10, 10)), interval=1, step=.01, coefficients=(0,0,1)):
         self.coefficients = coefficients
         super().__init__(window, interval, step)
 
@@ -141,7 +178,7 @@ class PolynomialGrid(ComplexGrid):
 
 class ExponentialGrid(ComplexGrid):
 
-        def __init__(self, window=((0, 20), (0, 20)), interval=1, step=.01, base=cmath.e):
+        def __init__(self, window=((-10, 10), (-10, 10)), interval=1, step=.01, base=cmath.e):
             self.base = base
             super().__init__(window, interval, step)
 
@@ -152,11 +189,13 @@ class ExponentialGrid(ComplexGrid):
 size = width, height = 1000, 1000
 screen = pygame.display.set_mode(size)
 
-vis = PolynomialGrid()
+vis = ComplexGrid()
 
 screen.fill([255, 255, 255])
 vis.connect_original_points(screen)
-# vis.complexdraw(screen, color=(255,0,0))
+vis.complexdraw(screen, color=(255,0,0))
+
+# pygame.draw.line(screen, )
 
 pygame.display.flip()
 
